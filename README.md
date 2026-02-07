@@ -173,18 +173,4 @@ lcms-toolkit/
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## Citation
-
-If you use this toolkit in your research, please cite:
-
-```bibtex
-@software{lcms_toolkit,
-  title = {LCMS Toolkit: A Cross-Platform LC-MS Data Analysis Library},
-  year = {2024},
-  url = {https://github.com/lcms-toolkit/lcms-toolkit}
-}
-```
