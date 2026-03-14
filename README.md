@@ -1,6 +1,38 @@
 # LCMS Toolkit
 
-A comprehensive, cross-platform toolkit for LC-MS (Liquid Chromatography-Mass Spectrometry) data analysis. Provides implementations in **C++**, **Python**, and **Java** with a unified API for mass spectrometry data processing, quantification, identification, and statistical analysis.
+A comprehensive, cross-platform toolkit for **LC-MS (Liquid Chromatography-Mass Spectrometry)** data analysis. Provides implementations in C++, Python, and Java with a unified API for mass spectrometry data processing, quantification, identification, and statistical analysis.
+
+---
+
+## Quick Start (No Data Files Needed)
+
+```bash
+git clone https://github.com/glbala87/lcms-toolkit.git
+cd lcms-toolkit
+pip install -e python/
+python run_demo.py
+```
+
+This runs **13 interactive demos** using synthetic data — spectrum operations, peak picking, isotope detection, spectral matching, quantification, TMT/SILAC labeling, PCA/ANOVA statistics, peptide identification, RT prediction, spectrum annotation, HTML reporting, plugin pipelines, memory-mapped arrays, and cloud/HPC workflows.
+
+Run a specific demo:
+
+```bash
+python run_demo.py spectrum        # Spectrum & peak picking
+python run_demo.py matching        # Spectral similarity & library search
+python run_demo.py statistics      # PCA, PLS-DA, ANOVA
+python run_demo.py annotation      # b/y ion annotation
+python run_demo.py --list          # See all 13 demos
+```
+
+Or use the one-step setup script:
+
+```bash
+./setup.sh
+python run_demo.py
+```
+
+---
 
 ## Features
 
@@ -12,7 +44,7 @@ A comprehensive, cross-platform toolkit for LC-MS (Liquid Chromatography-Mass Sp
 
 ### Advanced Analysis
 - **Isotope detection**: Averagine model, isotope pattern matching, charge state deconvolution
-- **Spectral matching**: Cosine, modified cosine, and spectral entropy similarity scoring with library search (MGF/MSP)
+- **Spectral matching**: Cosine, modified cosine, and spectral entropy similarity with library search (MGF/MSP)
 - **Label-free quantification**: RT alignment (linear/LOESS), feature alignment, consensus maps, differential analysis
 - **Isotope labeling**: SILAC (2/3-plex), TMT (6/10/11/16/18-plex), iTRAQ (4/8-plex), dimethyl labeling
 - **Peptide identification**: Database search, fragment ion matching, target-decoy FDR, protein inference
@@ -37,6 +69,8 @@ A comprehensive, cross-platform toolkit for LC-MS (Liquid Chromatography-Mass Sp
 - **Java GUI**: JavaFX spectrum/chromatogram viewer with zoom, annotation, and processing tools
 - **pybind11 bindings**: C++ performance from Python for core algorithms
 
+---
+
 ## Installation
 
 ### Python (pylcms)
@@ -45,22 +79,22 @@ A comprehensive, cross-platform toolkit for LC-MS (Liquid Chromatography-Mass Sp
 cd python
 pip install -e .
 
-# With visualization
+# With visualization support
 pip install -e ".[viz]"
 
 # With interactive plots + dashboard
 pip install -e ".[dashboard]"
 
-# With cloud/HPC support
+# With cloud/HPC support (Dask, S3)
 pip install -e ".[cloud]"
 
-# With report generation (PDF)
+# With PDF report generation
 pip install -e ".[report]"
 
 # With everything
 pip install -e ".[full]"
 
-# For development
+# For development (pytest, black, mypy, flake8)
 pip install -e ".[dev]"
 ```
 
@@ -80,22 +114,25 @@ cd java
 mvn package
 ```
 
-## Quick Start
+---
 
-### Python
+## Usage Examples
+
+### Python API
 
 ```python
 import pylcms
+import numpy as np
 
-# Load an mzML file
+# Load data
 exp = pylcms.load_mzml("sample.mzML")
-
-# Access spectra
 spec = exp.spectrum(0)
-print(f"Base peak: m/z {spec.base_peak_mz:.4f}")
+print(f"Base peak: m/z {spec.base_peak_mz:.4f}, TIC: {spec.tic:.0f}")
 
-# Pick peaks
-peaks = pylcms.pick_peaks(spec, min_snr=5)
+# Peak picking pipeline
+smoothed = pylcms.smooth_spectrum(spec, method="gaussian", window_size=5)
+corrected = pylcms.correct_baseline(smoothed, method="snip")
+peaks = pylcms.pick_peaks(corrected, min_snr=5)
 print(f"Found {len(peaks)} peaks")
 
 # Chromatograms
@@ -108,13 +145,12 @@ patterns = pylcms.detect_isotope_patterns(spec)
 # Spectral library search
 lib = pylcms.SpectralLibrary()
 lib.load_mgf("library.mgf")
-matches = lib.search(query_spec, precursor_mz=500.0, top_k=10)
+matches = lib.search(query_mz, query_int, query_precursor_mz=500.0, top_n=10)
 
 # Label-free quantification
-from pylcms.quantification import FeatureAlignment, ConsensusMap
-aligner = FeatureAlignment()
-consensus = aligner.align(feature_maps)
-consensus = pylcms.median_normalization(consensus.intensity_matrix)
+from pylcms.quantification import ConsensusMap, DifferentialAnalysis
+consensus = ConsensusMap(intensity_matrix=matrix, feature_ids=ids, sample_names=names)
+normalized = pylcms.median_normalization(consensus.intensity_matrix)
 
 # TMT reporter ion quantification
 from pylcms.labeling import extract_reporter_ions, LabelingStrategy
@@ -127,22 +163,31 @@ result = pca(consensus, n_components=3)
 print(f"PC1 explains {result.explained_variance_ratio[0]:.1%}")
 
 # Spectrum annotation
-from pylcms.annotation import annotate_spectrum, IonType
+from pylcms.annotation import annotate_spectrum
 ann = annotate_spectrum(ms2_spec, "PEPTIDER", precursor_charge=2)
-print(f"Coverage: {ann.coverage:.1%}, Matched: {ann.n_matched} peaks")
+print(f"Coverage: {ann.coverage:.0%}, Matched: {ann.n_matched} peaks")
 
-# Generate report
+# Peptide identification
+from pylcms.identification import calculate_peptide_mass, generate_theoretical_fragments
+mass = calculate_peptide_mass("PEPTIDER")
+fragments = generate_theoretical_fragments("PEPTIDER", charge=1)
+
+# RT prediction
+predictor = pylcms.RTPredictor()
+predictor.train(peptide_list, rt_list)
+predicted_rt = predictor.predict_single("PEPTIDER")
+
+# Generate HTML report
 from pylcms.reporting import ReportBuilder, ReportConfig
 builder = ReportBuilder(ReportConfig(title="My Analysis"))
-builder.add_summary(n_spectra=5000, n_features=1200)
-builder.add_qc_section(qc_metrics)
+builder.add_summary(n_spectra=5000, n_ms1=3000, n_ms2=2000, n_features=1200)
 builder.save_html("report.html")
 
 # Visualization
 pylcms.plot_spectrum(spec, mz_range=(100, 500))
 ```
 
-### CLI
+### CLI Tool
 
 ```bash
 # File info
@@ -154,11 +199,58 @@ pylcms peaks sample.mzML -o peaks.csv --snr 3.0
 # Convert formats
 pylcms convert sample.mzML --format mztab -o output.mztab
 
-# Run QC
-pylcms qc sample.mzML -o qc_report.json
+# Extract ion chromatogram
+pylcms xic sample.mzML --mz 500.0 --tolerance 0.5
 
-# Database search
-pylcms search sample.mzML --fasta proteins.fasta -o results.csv
+# Label-free quantification (multiple files)
+pylcms quantify sample1.mzML sample2.mzML sample3.mzML -o consensus.csv
+
+# Spectral library search
+pylcms search sample.mzML --library library.mgf --min-score 0.7
+
+# Quality control
+pylcms qc sample1.mzML sample2.mzML -o qc_report.json
+```
+
+### Plugin System
+
+```python
+from pylcms.plugins import PluginRegistry, register_as, ProcessingPipeline
+
+@register_as("processor", "my_filter")
+def my_filter(data, threshold=100):
+    return data[data > threshold]
+
+pipeline = ProcessingPipeline()
+pipeline.add_step("my_filter", threshold=50)
+result = pipeline.run(data)
+
+# Discover plugins from installed packages
+registry = PluginRegistry.instance()
+registry.discover_plugins("pylcms_plugins")
+```
+
+### Cloud/HPC
+
+```python
+from pylcms.cloud import DaskBackend, S3FileHandler, generate_snakemake_workflow
+
+# Distributed processing with Dask
+backend = DaskBackend(n_workers=16)
+results = backend.map(process_file, file_list)
+
+# Stream from S3
+s3 = S3FileHandler(bucket="my-lcms-data")
+files = s3.list_files(prefix="raw/", suffix=".mzML")
+
+# Generate Snakemake/Nextflow workflow templates
+generate_snakemake_workflow(output_path="Snakefile")
+
+# Generate SLURM/PBS job scripts
+from pylcms.cloud import HPCJobSubmitter
+submitter = HPCJobSubmitter(scheduler="slurm")
+script = submitter.generate_script("pylcms peaks sample.mzML -o peaks.csv",
+                                   cpus=8, memory="16G", time="1:00:00")
 ```
 
 ### C++
@@ -195,53 +287,18 @@ SpectralLibrary lib = new SpectralLibrary();
 lib.loadMGF("library.mgf");
 List<SpectralMatch> matches = lib.search(querySpec, 500.0, 10);
 
-// Launch GUI viewer
+// Launch JavaFX GUI viewer
 LCMSViewer.launch(args);
 ```
 
-### Plugin System
-
-```python
-from pylcms.plugins import PluginRegistry, register_as, ProcessingPipeline
-
-# Register a custom algorithm
-@register_as("algorithm", "my_peak_picker")
-def my_peak_picker(spectrum, threshold=100):
-    # Custom peak picking logic
-    ...
-
-# Build a processing pipeline
-pipeline = ProcessingPipeline()
-pipeline.add_step("smooth", window_size=5)
-pipeline.add_step("my_peak_picker", threshold=50)
-results = pipeline.run(spectrum)
-
-# Discover plugins from installed packages
-registry = PluginRegistry.instance()
-registry.discover_plugins("pylcms_plugins")
-```
-
-### Cloud/HPC
-
-```python
-from pylcms.cloud import DaskBackend, S3FileHandler, generate_snakemake_workflow
-
-# Distributed processing with Dask
-backend = DaskBackend(n_workers=16)
-results = backend.map(process_file, file_list)
-
-# Stream from S3
-s3 = S3FileHandler(bucket="my-lcms-data")
-files = s3.list_files(prefix="raw/", suffix=".mzML")
-
-# Generate workflow templates
-generate_snakemake_workflow(output_path="Snakefile")
-```
+---
 
 ## Project Structure
 
 ```
 lcms-toolkit/
+├── run_demo.py                    # One-command demo (13 features, no data needed)
+├── setup.sh                       # One-step install script
 ├── core/                          # C++ core library
 │   ├── include/lcms/              # Headers
 │   │   ├── algorithms/            # Peak picking, isotope, matching, quantification
@@ -273,18 +330,20 @@ lcms-toolkit/
 │   │   ├── plugins.py             # Plugin architecture
 │   │   ├── cloud.py               # Dask, S3, Snakemake, HPC
 │   │   └── cli.py                 # Command-line interface
-│   ├── tests/                     # pytest unit tests
+│   ├── tests/                     # pytest unit tests (10 test files)
 │   └── setup.py
 ├── java/                          # Java implementation
 │   ├── src/main/java/org/lcms/
 │   │   ├── core/                  # Spectrum, SpectralLibrary, Quantification
-│   │   ├── gui/                   # JavaFX viewer
-│   │   ├── io/                    # Indexed readers
+│   │   ├── gui/                   # JavaFX viewer (LCMSViewer)
+│   │   ├── io/                    # Indexed mzML/mzXML readers
 │   │   └── tools/                 # Batch/parallel processing
 │   ├── src/test/                  # JUnit 5 tests
 │   └── pom.xml
 └── examples/                      # Example scripts
 ```
+
+---
 
 ## API Reference
 
@@ -301,7 +360,10 @@ lcms-toolkit/
 | `IsotopePattern` | Detected isotope envelope |
 | `SpectralLibrary` / `SpectralMatch` | Library search infrastructure |
 | `PeptideSpectrumMatch` / `ProteinGroup` | Identification results |
-| `RTPrediction` | RT prediction result with confidence |
+| `RTPrediction` / `RTPredictor` | RT prediction model and results |
+| `ReportBuilder` | HTML/PDF report generator |
+| `MemmapMatrix` / `MemmapSpectraStore` | Disk-backed large arrays |
+| `PluginRegistry` / `ProcessingPipeline` | Plugin system |
 
 ### Algorithms
 
@@ -311,12 +373,14 @@ lcms-toolkit/
 | `smooth_spectrum()` | Gaussian, Savitzky-Golay, or moving average |
 | `correct_baseline()` | SNIP, top-hat, or rolling ball methods |
 | `centroid_spectrum()` | Convert profile to centroided |
+| `estimate_noise()` | MAD, percentile, or STD noise estimation |
 | `detect_isotope_patterns()` | Isotope envelope detection |
 | `deconvolute_spectrum()` | Charge state deconvolution |
 | `cosine_similarity()` | Spectral cosine similarity |
 | `modified_cosine_similarity()` | Modified cosine with precursor shift |
 | `spectral_entropy_similarity()` | Entropy-based similarity |
-| `annotate_spectrum()` | Fragment ion annotation |
+| `annotate_spectrum()` | Fragment ion annotation (b/y/a/c/x/z) |
+| `compute_fragment_ions()` | Theoretical fragment m/z computation |
 
 ### Quantification & Statistics
 
@@ -327,11 +391,15 @@ lcms-toolkit/
 | `tic_normalization()` | Total ion current normalization |
 | `extract_reporter_ions()` | TMT/iTRAQ reporter extraction |
 | `find_silac_pairs()` | SILAC pair matching |
+| `normalize_reporter_intensities()` | Reporter ion normalization |
 | `pca()` | Principal Component Analysis |
 | `plsda()` | PLS Discriminant Analysis |
+| `hierarchical_clustering()` | Hierarchical sample clustering |
 | `anova()` | One-way ANOVA with BH-FDR |
 | `volcano_data()` | Volcano plot data computation |
 | `target_decoy_fdr()` | FDR control via target-decoy |
+| `calculate_peptide_mass()` | Monoisotopic peptide mass |
+| `generate_theoretical_fragments()` | Theoretical b/y ions |
 
 ### I/O
 
@@ -342,7 +410,9 @@ lcms-toolkit/
 | `save_mztab()` | Export to mzTab |
 | `save_mzidentml()` | Export identification results |
 | `load_feature_table()` / `save_feature_table()` | CSV/TSV feature tables |
-| `IndexedMzMLReader` | Random-access indexed reading |
+| `IndexedMzMLReader` / `IndexedMzXMLReader` | Random-access indexed reading |
+
+---
 
 ## Requirements
 
@@ -363,10 +433,12 @@ lcms-toolkit/
 - Maven 3.6+
 - JavaFX (for GUI viewer)
 
+---
+
 ## Testing
 
 ```bash
-# Python
+# Python (10 test files covering all modules)
 cd python && pip install -e ".[dev]" && pytest tests/ -v
 
 # C++
@@ -375,6 +447,8 @@ cd core/build && cmake .. -DBUILD_TESTS=ON && make && ctest
 # Java
 cd java && mvn test
 ```
+
+---
 
 ## License
 
