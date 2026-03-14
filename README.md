@@ -34,6 +34,53 @@ python run_demo.py
 
 ---
 
+## Analyze Real Data
+
+Use `analyze.py` for a complete analysis pipeline on real mzML/mzXML files:
+
+```bash
+# Basic analysis (peaks, TIC, QC metrics)
+python analyze.py sample.mzML
+
+# Full analysis with features, report, and custom SNR
+python analyze.py sample.mzML --features --report --snr 5
+
+# Extract ion chromatograms at specific m/z values
+python analyze.py sample.mzML --xic 500.0 750.3 --xic-tolerance 0.5
+
+# Search against a spectral library (MGF)
+python analyze.py sample.mzML --search library.mgf --min-score 0.7
+
+# Annotate MS2 spectra with a peptide sequence
+python analyze.py sample.mzML --annotate PEPTIDER --charge 2
+
+# Multi-file analysis with report
+python analyze.py sample1.mzML sample2.mzML sample3.mzML --features --report
+
+# Output to a custom directory in TSV format
+python analyze.py sample.mzML -o my_results/ --format tsv
+
+# Filter by MS level and RT range
+python analyze.py sample.mzML --ms-level 1 --rt-range 60 600
+```
+
+**Output files** (saved to `lcms_results/` by default):
+
+| File | Contents |
+|------|----------|
+| `*_peaks.csv` | All detected peaks (m/z, intensity, RT, SNR, FWHM, area) |
+| `*_features.csv` | Linked features across scans (m/z, RT range, volume, quality) |
+| `*_tic.csv` | Total ion chromatogram |
+| `*_xic_*.csv` | Extracted ion chromatograms |
+| `*_matches.csv` | Spectral library search results |
+| `*_annotations.csv` | Fragment ion annotations |
+| `*_qc.json` | Quality control metrics |
+| `analysis_report.html` | Full HTML report (with `--report`) |
+
+See all options: `python analyze.py --help`
+
+---
+
 ## Features
 
 ### Core Capabilities
@@ -297,6 +344,7 @@ LCMSViewer.launch(args);
 
 ```
 lcms-toolkit/
+├── analyze.py                     # Analyze real mzML/mzXML files (full pipeline)
 ├── run_demo.py                    # One-command demo (13 features, no data needed)
 ├── setup.sh                       # One-step install script
 ├── core/                          # C++ core library
