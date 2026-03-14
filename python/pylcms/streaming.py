@@ -5,7 +5,7 @@ Provides memory-efficient random access to spectra in large mzML/mzXML files
 without loading the entire file into memory.
 """
 
-from typing import Optional, List, Iterator, Tuple, Dict
+from typing import Optional, List, Iterator, Tuple, Dict, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 import struct

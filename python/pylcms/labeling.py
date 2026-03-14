@@ -191,8 +191,8 @@ def extract_reporter_ions(
     if not reporters:
         raise ValueError(f"No reporter ions defined for {strategy}")
 
-    mz_array = spectrum.mz_array
-    int_array = spectrum.intensity_array
+    mz_array = spectrum.mz
+    int_array = spectrum.intensity
     channel_intensities = {}
 
     for channel, target_mz in reporters.items():

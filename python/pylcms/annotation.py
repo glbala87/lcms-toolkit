@@ -262,8 +262,8 @@ def annotate_spectrum(
         for mz, label in immonium:
             theoretical.append((mz, label, IonType.IMMONIUM, 0, 1, NeutralLoss.NONE))
 
-    mz_array = spectrum.mz_array
-    int_array = spectrum.intensity_array
+    mz_array = spectrum.mz
+    int_array = spectrum.intensity
     n_peaks = len(mz_array)
 
     annotations = []
