@@ -36,6 +36,11 @@ set(LCMS_SOURCES
     src/mzml_reader.cpp
     src/mzxml_reader.cpp
     src/base64.cpp
+    src/isotope_detection.cpp
+    src/spectral_matching.cpp
+    src/quantification.cpp
+    src/parallel.cpp
+    src/indexed_reader.cpp
 )
 
 # Create the core library
@@ -65,6 +70,10 @@ if(Eigen3_FOUND)
     target_compile_definitions(lcms_core PUBLIC LCMS_HAS_EIGEN)
 endif()
 
+# Threading support for parallel processing
+find_package(Threads REQUIRED)
+target_link_libraries(lcms_core PUBLIC Threads::Threads)
+
 # Compiler warnings
 target_compile_options(lcms_core PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
@@ -72,6 +81,19 @@ target_compile_options(lcms_core PRIVATE
     $<$<CXX_COMPILER_ID:AppleClang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
+
+# Python bindings
+if(LCMS_BUILD_PYTHON)
+    find_package(pybind11 QUIET)
+    if(pybind11_FOUND)
+        pybind11_add_module(_lcms_core bindings/python_bindings.cpp)
+        target_link_libraries(_lcms_core PRIVATE lcms_core)
+        target_compile_definitions(_lcms_core PRIVATE LCMS_BUILD_PYTHON)
+        message(STATUS "Building Python bindings with pybind11")
+    else()
+        message(WARNING "pybind11 not found - Python bindings will not be built")
+    endif()
+endif()
 
 # Tests
 if(LCMS_BUILD_TESTS)

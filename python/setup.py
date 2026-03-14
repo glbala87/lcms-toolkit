@@ -55,12 +55,28 @@ setup(
         "viz": [
             "matplotlib>=3.4.0",
         ],
+        "interactive": [
+            "plotly>=5.0.0",
+        ],
+        "dashboard": [
+            "plotly>=5.0.0",
+            "dash>=2.0.0",
+        ],
         "dataframe": [
             "pandas>=1.3.0",
         ],
+        "report": [
+            "weasyprint>=52.0",
+        ],
+        "cloud": [
+            "dask[distributed]>=2022.1.0",
+            "boto3>=1.20.0",
+        ],
         "full": [
             "matplotlib>=3.4.0",
+            "plotly>=5.0.0",
             "pandas>=1.3.0",
+            "weasyprint>=52.0",
         ],
         "dev": [
             "pytest>=7.0.0",
